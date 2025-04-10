@@ -31,7 +31,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
@@ -68,13 +67,11 @@ import com.google.common.base.Strings;
 public class LSContentAssistProcessor implements IContentAssistProcessor {
 
 	private static final ICompletionProposal[] NO_COMPLETION_PROPOSALS = new ICompletionProposal[0];
-	private static final long TRIGGERS_TIMEOUT = 50;
 	private static final long CONTEXT_INFORMATION_TIMEOUT = 1000;
 
 	private @Nullable IDocument currentDocument;
 	private @Nullable String errorMessage;
 	private final boolean errorAsCompletionItem;
-	private @Nullable CompletableFuture<List<@Nullable Void>> completionLanguageServersFuture;
 	private volatile char[] completionTriggerChars = NO_CHARS;
 	private @Nullable CompletableFuture<List<@Nullable Void>> contextInformationLanguageServersFuture;
 	private volatile char[] contextTriggerChars = NO_CHARS;
@@ -142,7 +139,7 @@ public class LSContentAssistProcessor implements IContentAssistProcessor {
 			// - LSP requests 'textDocument/completions'
 			// - completionLanguageServersFuture
 			final var cancellationSupport = new CancellationSupport();
-			final var completionLanguageServersFuture = this.completionLanguageServersFuture = cancellationSupport.execute(
+			final var completionLanguageServersFuture = cancellationSupport.execute(
 					LanguageServers.forDocument(document).withFilter(capabilities -> capabilities.getCompletionProvider() != null) //
 					.collectAll((w, ls) -> cancellationSupport.execute(ls.getTextDocumentService().completion(param)) //
 							.thenAccept(completion -> {
@@ -226,7 +223,7 @@ public class LSContentAssistProcessor implements IContentAssistProcessor {
 			completionTriggerChars = NO_CHARS;
 			contextTriggerChars = NO_CHARS;
 
-			completionLanguageServersFuture = triggerCharsCancellationSupport.execute(//
+			triggerCharsCancellationSupport.execute(//
 					LanguageServers.forDocument(document)
 					.withFilter(capabilities -> capabilities.getCompletionProvider() != null) //
 					.collectAll((w, ls) -> {
@@ -328,27 +325,6 @@ public class LSContentAssistProcessor implements IContentAssistProcessor {
 		return new ContextInformation(information.getLabel(), signature.toString());
 	}
 
-	private void getFuture(@Nullable CompletableFuture<?> future) {
-		if (future == null) {
-			return;
-		}
-
-		try {
-			future.get(TRIGGERS_TIMEOUT, TimeUnit.MILLISECONDS);
-		} catch (InterruptedException e) {
-			LanguageServerPlugin.logError(e);
-			Thread.currentThread().interrupt();
-		} catch (TimeoutException e) {
-			LanguageServerPlugin.logWarning(
-					"Could not get trigger characters due to timeout after " + TRIGGERS_TIMEOUT + " milliseconds", e); //$NON-NLS-1$//$NON-NLS-2$
-		} catch (OperationCanceledException | ResponseErrorException | ExecutionException | CancellationException e) {
-			if (!CancellationUtil.isRequestCancelledException(e)) { // do not report error if the server has cancelled
-																	// the request
-				LanguageServerPlugin.logError(e);
-			}
-		}
-	}
-
 	private static char[] mergeTriggers(char @Nullable [] initialArray,
 			@Nullable Collection<String> additionalTriggers) {
 		if (initialArray == null) {
@@ -375,14 +351,12 @@ public class LSContentAssistProcessor implements IContentAssistProcessor {
 	@Override
 	public char @Nullable [] getCompletionProposalAutoActivationCharacters() {
 		initiateLanguageServers();
-		getFuture(completionLanguageServersFuture);
 		return completionTriggerChars;
 	}
 
 	@Override
 	public char @Nullable [] getContextInformationAutoActivationCharacters() {
 		initiateLanguageServers();
-		getFuture(contextInformationLanguageServersFuture);
 		return contextTriggerChars;
 	}
 
