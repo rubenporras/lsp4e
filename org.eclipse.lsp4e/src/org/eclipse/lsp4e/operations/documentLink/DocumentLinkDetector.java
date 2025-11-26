@@ -13,6 +13,8 @@
 package org.eclipse.lsp4e.operations.documentLink;
 
 import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
@@ -81,6 +83,8 @@ public class DocumentLinkDetector extends AbstractHyperlinkDetector {
 				} catch (final IllegalArgumentException ex) {
 					LanguageServerPlugin.logError(ex);
 				}
+			} else {
+				return URLDecoder.decode(uri, StandardCharsets.UTF_8);
 			}
 			return uri;
 		}

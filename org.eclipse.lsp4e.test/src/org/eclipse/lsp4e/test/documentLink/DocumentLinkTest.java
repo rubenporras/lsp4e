@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.List;
 
 import org.eclipse.core.filesystem.EFS;
 import org.eclipse.core.resources.IFile;
@@ -78,10 +79,8 @@ public class DocumentLinkTest extends AbstractTestWithProject {
 		assertEquals("file://test0", hyperlinks[0].getHyperlinkText());
 	}
 
-	@Test
-	public void testDocumentLinkWithEncodedUri() throws Exception {
-		final var links = new ArrayList<DocumentLink>();
-		links.add(new DocumentLink(new Range(new Position(0, 9), new Position(0, 15)), "file:///tmp/fi%C3%A9le.ts"));
+	private void assertDocumentLinkWithEncodedUri(String encoded, String decoded) throws Exception{
+		final var links = List.of(new DocumentLink(new Range(new Position(0, 9), new Position(0, 15)), encoded));
 		MockLanguageServer.INSTANCE.setDocumentLinks(links);
 
 		IFile file = TestUtils.createUniqueTestFile(project, "not_link <link>");
@@ -89,9 +88,18 @@ public class DocumentLinkTest extends AbstractTestWithProject {
 
 		IHyperlink[] hyperlinks = documentLinkDetector.detectHyperlinks(viewer, new Region(13, 0), true);
 		assertEquals(1, hyperlinks.length);
-		assertEquals("/tmp/fiéle.ts", hyperlinks[0].getHyperlinkText());
+		assertEquals(decoded, hyperlinks[0].getHyperlinkText());
+	}
+	@Test
+	public void testDocumentLinkWithFileEncodedUri() throws Exception {
+		assertDocumentLinkWithEncodedUri("file:///tmp/fi%C3%A9le.ts", "/tmp/fiéle.ts");
 	}
 
+	@Test
+	public void testDocumentLinkWithEncodedUri() throws Exception {
+		assertDocumentLinkWithEncodedUri("http://abc.com/fi%C3%A9le.html", "http://abc.com/fi�le.html");
+	}
+	
 	@Test
 	public void testDocumentLinkWrongRegion() throws Exception {
 		final var links = new ArrayList<DocumentLink>();
