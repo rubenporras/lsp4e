@@ -135,6 +135,26 @@ public class LSPRenameProcessor extends RefactoringProcessor {
 		return status;
 	}
 
+	/**
+	 * Returns the {@code textDocument/prepareRename} result that was obtained during
+	 * {@link #checkInitialConditions(IProgressMonitor)}.
+	 *
+	 * @return the prepare-rename result or {@code null} if no result is available
+	 */
+	@Nullable Either3<Range, PrepareRenameResult, PrepareRenameDefaultBehavior> getPrepareRenameResult() {
+		return prepareRenameResult;
+	}
+
+	/**
+	 * Returns the preferred language server that was selected during
+	 * {@link #checkInitialConditions(IProgressMonitor)}.
+	 *
+	 * @return the preferred language server or {@code null} if none was selected
+	 */
+	@Nullable LanguageServerWrapper getRefactoringServer() {
+		return refactoringServer;
+	}
+
 	public String getPlaceholder() {
 		final var prepareRenameResult = this.prepareRenameResult;
 		if (prepareRenameResult == null)

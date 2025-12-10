@@ -37,9 +37,11 @@ import org.eclipse.core.filesystem.IFileStore;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.lsp4e.LSPEclipseUtils;
+import org.eclipse.lsp4e.LanguageServerPlugin;
 import org.eclipse.lsp4e.operations.rename.LSPRenameProcessor;
 import org.eclipse.lsp4e.test.utils.AbstractTestWithProject;
 import org.eclipse.lsp4e.test.utils.TestUtils;
@@ -211,6 +213,9 @@ public class RenameTest extends AbstractTestWithProject {
 
 	@Test
 	public void testRenameHandlerExecution() throws Exception {
+		// This test expects the classic dialog-based rename, so disable inline mode
+		InstanceScope.INSTANCE.getNode(LanguageServerPlugin.PLUGIN_ID)
+				.putBoolean("org.eclipse.lsp4e.inlineRename", false); //$NON-NLS-1$
 		IFile file = TestUtils.createUniqueTestFile(project, "old");
 		MockLanguageServer.INSTANCE.getTextDocumentService().setRenameEdit(createSimpleMockRenameEdit(LSPEclipseUtils.toUri(file)));
 		final var editor = (ITextEditor) TestUtils.openEditor(file);
