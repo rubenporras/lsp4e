@@ -50,6 +50,7 @@ import org.eclipse.lsp4e.LSPEclipseUtils;
 import org.eclipse.lsp4e.LanguageServerPlugin;
 import org.eclipse.lsp4e.LanguageServers;
 import org.eclipse.lsp4e.internal.CancellationUtil;
+import org.eclipse.lsp4e.internal.IdentifierUtil;
 import org.eclipse.lsp4j.Hover;
 import org.eclipse.lsp4j.HoverParams;
 import org.eclipse.lsp4j.MarkedString;
@@ -191,26 +192,11 @@ public class LSPTextHover implements ITextHover, ITextHoverExtension, ITextHover
 
 	private static Region computeHeuristicRegion(final IDocument document, final int offset) {
 		try {
-			final int length = document.getLength();
-			if (offset < 0 || offset > length) {
-				return new Region(Math.max(0, Math.min(offset, length)), 0);
-			}
-			int start = offset;
-			int end = offset;
-			while (start > 0 && isWordPart(document.getChar(start - 1))) {
-				start--;
-			}
-			while (end < length && isWordPart(document.getChar(end))) {
-				end++;
-			}
-			return new Region(start, Math.max(0, end - start));
+			return IdentifierUtil.computeIdentifierRegion(document, offset);
 		} catch (final BadLocationException ex) {
-			return new Region(offset, 0);
+			final int safeOffset = Math.max(0, Math.min(offset, document.getLength()));
+			return new Region(safeOffset, 0);
 		}
-	}
-
-	private static boolean isWordPart(char c) {
-		return Character.isLetterOrDigit(c) || c == '_' || c == '$';
 	}
 
 	/**

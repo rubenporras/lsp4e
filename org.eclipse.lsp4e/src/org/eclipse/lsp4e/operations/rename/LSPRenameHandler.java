@@ -48,10 +48,15 @@ public class LSPRenameHandler extends LSPDocumentAbstractHandler {
 			IEditorPart part = HandlerUtil.getActiveEditor(event);
 			if(part == null)
 				return;
-			Shell shell = part.getSite().getShell();
+
 			LanguageServerDocumentExecutor executor = LanguageServers.forDocument(document).withCapability(ServerCapabilities::getRenameProvider);
 			if (executor.anyMatching()) {
 				int offset = textSelection.getOffset();
+
+				var viewer = LSPEclipseUtils.getTextViewer(part);
+				final Shell shell = part.getSite().getShell();
+				if (viewer != null && LSPInlineRenameLinkedMode.start(document, viewer, offset, shell))
+					return;
 
 				final var processor = new LSPRenameProcessor(document, offset);
 				final var refactoring = new ProcessorBasedRefactoring(processor);
