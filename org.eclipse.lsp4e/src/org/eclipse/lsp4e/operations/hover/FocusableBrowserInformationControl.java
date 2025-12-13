@@ -109,12 +109,12 @@ public class FocusableBrowserInformationControl extends BrowserInformationContro
 
 		safeExecute(browser, "document.getElementsByTagName(\"html\")[0].style.whiteSpace = \"nowrap\""); //$NON-NLS-1$
 		Double width = 20
-				+ (safeEvaluate(browser, "return document.body ? document.body.scrollWidth : null;") instanceof Double evaluated ? evaluated //$NON-NLS-1$
+				+ (safeEvaluate(browser, "return document.body.scrollWidth;") instanceof Double evaluated ? evaluated //$NON-NLS-1$
 						: 0);
 		setSize(width.intValue(), hint.y);
 
 		safeExecute(browser, "document.getElementsByTagName(\"html\")[0].style.whiteSpace = \"normal\""); //$NON-NLS-1$
-		Double height = safeEvaluate(browser, "return document.body ? document.body.scrollHeight : null;") instanceof Double evaluated //$NON-NLS-1$
+		Double height = safeEvaluate(browser, "return document.body.scrollHeight;") instanceof Double evaluated //$NON-NLS-1$
 				? evaluated
 				: 0d;
 		Object marginTop = safeEvaluate(browser, "return window.getComputedStyle(document.body).marginTop;"); //$NON-NLS-1$
