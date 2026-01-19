@@ -121,16 +121,17 @@ public class LSContentAssistProcessor implements IContentAssistProcessor {
 			return NO_COMPLETION_PROPOSALS;
 		}
 
-		initiateLanguageServers(document);
-		CompletionParams param;
-
+		final CompletionParams param;
 		try {
 			param = LSPEclipseUtils.toCompletionParams(uri, offset, document, this.completionTriggerChars);
 		} catch (BadLocationException e) {
-			LanguageServerPlugin.logError(e);
-			this.errorMessage = createErrorMessage(offset, e);
-			return createErrorProposal(offset, e);
+			// Document was changed while we computed completion proposals, which made the
+			// offset invalid. We can stop any further computation as the result will be
+			// discarded anyway.
+			return NO_COMPLETION_PROPOSALS;
 		}
+
+		initiateLanguageServers(document);
 
 		final var proposals = Collections.synchronizedList(new ArrayList<ICompletionProposal>());
 		final var anyIncomplete = new AtomicBoolean(false);
