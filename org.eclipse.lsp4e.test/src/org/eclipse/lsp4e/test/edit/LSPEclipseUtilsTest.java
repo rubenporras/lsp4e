@@ -44,6 +44,7 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.ITextViewer;
 import org.eclipse.lsp4e.LSPEclipseUtils;
@@ -51,6 +52,7 @@ import org.eclipse.lsp4e.test.utils.AbstractTestWithProject;
 import org.eclipse.lsp4e.test.utils.NoErrorLoggedRule;
 import org.eclipse.lsp4e.test.utils.TestUtils;
 import org.eclipse.lsp4e.ui.UI;
+import org.eclipse.lsp4j.CompletionContext;
 import org.eclipse.lsp4j.CompletionTriggerKind;
 import org.eclipse.lsp4j.CreateFile;
 import org.eclipse.lsp4j.Location;
@@ -504,15 +506,22 @@ public class LSPEclipseUtilsTest extends AbstractTestWithProject {
 		assertNotEquals(Collections.emptySet(), LSPEclipseUtils.findOpenEditorsFor(file.toUri()));
 	}
 
+	private static CompletionContext toCompletionContext(int offset, IDocument document, char[] completionTriggerChars)
+			throws BadLocationException {
+			int positionCharacterOffset = offset > 0 ? offset - 1 : offset;
+			String positionCharacter = document.get(positionCharacterOffset, 1);
+			return LSPEclipseUtils.toCompletionContext(positionCharacter, completionTriggerChars);
+	}
+
 	@Test
 	public void testToCompletionParams_EmptyDocument() throws Exception {
 		// Given an empty file/document
 		var file = TestUtils.createFile(project, "dummy" + new Random().nextInt(), "");
 		var triggerChars = new  char[] {':', '>'};
-		// When toCompletionParams get called with offset == 0 and document.getLength() == 0:
-		var param = LSPEclipseUtils.toCompletionParams(file.getLocationURI(), 0, LSPEclipseUtils.getDocument(file), triggerChars);
-		// Then no context has been added to param:
-		assertNull(param.getContext());
+		// When toCompletionContext get called with offset == 0 and document.getLength() == 0:
+		var context = toCompletionContext(0, LSPEclipseUtils.getDocument(file), triggerChars);
+		// Then the trigger kind is Invoked:
+		assertEquals(context.getTriggerKind(), CompletionTriggerKind.Invoked);
 	}
 
 	@Test
@@ -520,10 +529,10 @@ public class LSPEclipseUtilsTest extends AbstractTestWithProject {
 		// Given a non empty file/document containing a non trigger character at position 3:
 		var file = TestUtils.createFile(project, "dummy" + new Random().nextInt(), "std");
 		var triggerChars = new  char[] {':', '>'};
-		// When toCompletionParams get called with offset == 0 and document.getLength() > 0:
-		var param = LSPEclipseUtils.toCompletionParams(file.getLocationURI(), 0, LSPEclipseUtils.getDocument(file), triggerChars);
+		// When toCompletionContext get called with offset == 0 and document.getLength() > 0:
+		var context = toCompletionContext( 0, LSPEclipseUtils.getDocument(file), triggerChars);
 		// Then the trigger kind is Invoked:
-		assertEquals(param.getContext().getTriggerKind(), CompletionTriggerKind.Invoked);
+		assertEquals(context.getTriggerKind(), CompletionTriggerKind.Invoked);
 	}
 
 	@Test
@@ -531,12 +540,12 @@ public class LSPEclipseUtilsTest extends AbstractTestWithProject {
 		// Given a non empty file/document containing a trigger character at position 4:
 		var file = TestUtils.createFile(project, "dummy" + new Random().nextInt(), "std:");
 		var triggerChars = new  char[] {':', '>'};
-		// When toCompletionParams get called with offset > 0 and document.getLength() > 0:
-		var param = LSPEclipseUtils.toCompletionParams(file.getLocationURI(), 4, LSPEclipseUtils.getDocument(file), triggerChars);
+		// When toCompletionContext get called with offset > 0 and document.getLength() > 0:
+		var context = toCompletionContext(4, LSPEclipseUtils.getDocument(file), triggerChars);
 		// Then the context has been added with a colon as trigger character:
-		assertEquals(param.getContext().getTriggerCharacter(), ":");
+		assertEquals(context.getTriggerCharacter(), ":");
 		// And the trigger kind is TriggerCharacter:
-		assertEquals(param.getContext().getTriggerKind(), CompletionTriggerKind.TriggerCharacter);
+		assertEquals(context.getTriggerKind(), CompletionTriggerKind.TriggerCharacter);
 	}
 
 	@Test
@@ -544,10 +553,10 @@ public class LSPEclipseUtilsTest extends AbstractTestWithProject {
 		// Given a non empty file/document containing a non trigger character at position 3:
 		var file = TestUtils.createFile(project, "dummy" + new Random().nextInt(), "std");
 		var triggerChars = new  char[] {':', '>'};
-		// When toCompletionParams get called with offset > 0 and document.getLength() > 0:
-		var param = LSPEclipseUtils.toCompletionParams(file.getLocationURI(), 3, LSPEclipseUtils.getDocument(file), triggerChars);
+		// When toCompletionContext get called with offset > 0 and document.getLength() > 0:
+		var context = toCompletionContext(3, LSPEclipseUtils.getDocument(file), triggerChars);
 		// Then the trigger kind is Invoked:
-		assertEquals(param.getContext().getTriggerKind(), CompletionTriggerKind.Invoked);
+		assertEquals(context.getTriggerKind(), CompletionTriggerKind.Invoked);
 	}
 
 	@Test

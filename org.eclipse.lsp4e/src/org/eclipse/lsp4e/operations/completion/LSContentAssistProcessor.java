@@ -87,8 +87,8 @@ public class LSContentAssistProcessor implements IContentAssistProcessor {
 	 */
 	private CancellationSupport completionCancellationSupport;
 	/**
-	 * The cancellation support used to cancel previous LSP requests
-	 * for fetching the trigger characters
+	 * The cancellation support used to cancel previous LSP requests for fetching
+	 * the trigger characters
 	 */
 	private CancellationSupport triggerCharsCancellationSupport;
 
@@ -116,6 +116,12 @@ public class LSContentAssistProcessor implements IContentAssistProcessor {
 			return NO_COMPLETION_PROPOSALS;
 		}
 
+		String positionCharacter = getPositionCharacter(document, offset);
+
+		if (positionCharacter == null) {
+			return NO_COMPLETION_PROPOSALS;
+		}
+
 		URI uri = LSPEclipseUtils.toUri(document);
 		if (uri == null) {
 			return NO_COMPLETION_PROPOSALS;
@@ -123,7 +129,7 @@ public class LSContentAssistProcessor implements IContentAssistProcessor {
 
 		final CompletionParams param;
 		try {
-			param = LSPEclipseUtils.toCompletionParams(uri, offset, document, this.completionTriggerChars);
+			param = LSPEclipseUtils.toCompletionParams(uri, offset, document);
 		} catch (BadLocationException e) {
 			// Document was changed while we computed completion proposals, which made the
 			// offset invalid. We can stop any further computation as the result will be
@@ -132,6 +138,8 @@ public class LSContentAssistProcessor implements IContentAssistProcessor {
 		}
 
 		initiateLanguageServers(document);
+
+		param.setContext(LSPEclipseUtils.toCompletionContext(positionCharacter, completionTriggerChars));
 
 		final var proposals = Collections.synchronizedList(new ArrayList<ICompletionProposal>());
 		final var anyIncomplete = new AtomicBoolean(false);
@@ -144,8 +152,8 @@ public class LSContentAssistProcessor implements IContentAssistProcessor {
 			// - LSP requests 'textDocument/completions'
 			// - completionLanguageServersFuture
 			final var cancellationSupport = new CancellationSupport();
-			final var completionLanguageServersFuture = cancellationSupport.execute(
-					LanguageServers.forDocument(document).withFilter(capabilities -> capabilities.getCompletionProvider() != null) //
+			final var completionLanguageServersFuture = cancellationSupport.execute(LanguageServers
+					.forDocument(document).withFilter(capabilities -> capabilities.getCompletionProvider() != null) //
 					.collectAll((w, ls) -> cancellationSupport.execute(ls.getTextDocumentService().completion(param)) //
 							.thenAccept(completion -> {
 								boolean isIncomplete = completion != null && completion.isRight()
@@ -192,7 +200,8 @@ public class LSContentAssistProcessor implements IContentAssistProcessor {
 		final ICompletionProposal incompleteProposal = createIncompleteProposal(offset, anyIncomplete.get());
 		if (incompleteProposal != null && !completeProposals.isEmpty()) {
 			// Only add the incompleteProposal if the list is not empty.
-			// Otherwise we might get a completion popup which contains only the incompleteProposal.
+			// Otherwise we might get a completion popup which contains only the
+			// incompleteProposal.
 
 			@SuppressWarnings("unchecked")
 			final var incompleteProposals = (List<ICompletionProposal>) (List<?>) completeProposals;
@@ -200,6 +209,18 @@ public class LSContentAssistProcessor implements IContentAssistProcessor {
 			return incompleteProposals.toArray(ICompletionProposal[]::new);
 		}
 		return completeProposals.toArray(ICompletionProposal[]::new);
+	}
+
+	private @Nullable String getPositionCharacter(IDocument document, int offset) {
+		int positionCharacterOffset = offset > 0 ? offset - 1 : offset;
+		try {
+			return document.get(positionCharacterOffset, 1);
+		} catch (BadLocationException e) {
+			// Document was changed while we computed completion proposals, which made the
+			// offset invalid. We can stop any further computation as the result will be
+			// discarded anyway.
+		}
+		return null;
 	}
 
 	private ICompletionProposal[] createErrorProposal(int offset, Exception ex) {
@@ -232,22 +253,25 @@ public class LSContentAssistProcessor implements IContentAssistProcessor {
 			contextTriggerChars = NO_CHARS;
 
 			completionTriggerCharsFuture = LanguageServers.forDocument(document)
-				.withFilter(capabilities -> capabilities.getCompletionProvider() != null) //
-				.collectAll((w, ls) -> {
-					List<String> triggerChars = castNonNull(w.getServerCapabilities()).getCompletionProvider().getTriggerCharacters();
-					completionTriggerChars = mergeTriggers(completionTriggerChars,triggerChars);
-					return CompletableFuture.completedFuture(null);
-			});
+					.withFilter(capabilities -> capabilities.getCompletionProvider() != null) //
+					.collectAll((w, ls) -> {
+						List<String> triggerChars = castNonNull(w.getServerCapabilities()).getCompletionProvider()
+								.getTriggerCharacters();
+						completionTriggerChars = mergeTriggers(completionTriggerChars, triggerChars);
+						return CompletableFuture.completedFuture(null);
+					});
 			triggerCharsCancellationSupport.execute(completionTriggerCharsFuture);
 
 			contextInformationTriggerCharsFuture = LanguageServers.forDocument(document)
-				.withFilter(capabilities -> capabilities.getSignatureHelpProvider() != null) //
-				.collectAll((w, ls) -> {
-					List<String> triggerChars = castNonNull(w.getServerCapabilities()).getSignatureHelpProvider().getTriggerCharacters();
-					contextTriggerChars = mergeTriggers(contextTriggerChars, triggerChars);
-					return CompletableFuture.completedFuture(null);
-			});
-			contextInformationLanguageServersFuture = triggerCharsCancellationSupport.execute(contextInformationTriggerCharsFuture);
+					.withFilter(capabilities -> capabilities.getSignatureHelpProvider() != null) //
+					.collectAll((w, ls) -> {
+						List<String> triggerChars = castNonNull(w.getServerCapabilities()).getSignatureHelpProvider()
+								.getTriggerCharacters();
+						contextTriggerChars = mergeTriggers(contextTriggerChars, triggerChars);
+						return CompletableFuture.completedFuture(null);
+					});
+			contextInformationLanguageServersFuture = triggerCharsCancellationSupport
+					.execute(contextInformationTriggerCharsFuture);
 		}
 
 	}
@@ -271,15 +295,15 @@ public class LSContentAssistProcessor implements IContentAssistProcessor {
 		// Stop the compute of ICompletionProposal if the completion has been cancelled
 		cancelChecker.checkCanceled();
 		CompletionItemDefaults defaults = completionList.map(o -> null, CompletionList::getItemDefaults);
-		return completionList.map( Functions.identity(), CompletionList::getItems).stream() //
+		return completionList.map(Functions.identity(), CompletionList::getItems).stream() //
 				.filter(Objects::nonNull) //
-				.map(item -> new LSCompletionProposal(document, offset, item, defaults, languageServerWrapper, isIncomplete))
+				.map(item -> new LSCompletionProposal(document, offset, item, defaults, languageServerWrapper,
+						isIncomplete))
 				.filter(proposal -> {
 					// Stop the compute of ICompletionProposal if the completion has been cancelled
 					cancelChecker.checkCanceled();
 					return proposal.validate(document, offset, null);
-				}).map(ICompletionProposal.class::cast)
-				.toList();
+				}).map(ICompletionProposal.class::cast).toList();
 	}
 
 	@Override

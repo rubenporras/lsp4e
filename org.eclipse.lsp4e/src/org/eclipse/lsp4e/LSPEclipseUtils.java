@@ -240,6 +240,10 @@ public final class LSPEclipseUtils {
 		}
 	}
 
+	/**
+	 * use {@link #toCompletionParams(URI, int, IDocument)} and {@link #toCompletionContext(String, char[])} instead.
+	 */
+	@Deprecated(forRemoval = true)
 	public static CompletionParams toCompletionParams(URI fileUri, int offset, IDocument document, char[] completionTriggerChars)
 			throws BadLocationException {
 		Position start = toPosition(offset, document);
@@ -247,18 +251,30 @@ public final class LSPEclipseUtils {
 		if (document.getLength() > 0) {
 			int positionCharacterOffset = offset > 0 ? offset - 1 : offset;
 			String positionCharacter = document.get(positionCharacterOffset, 1);
-			if (Chars.contains(completionTriggerChars, positionCharacter.charAt(0))) {
-				param.setContext(new CompletionContext(CompletionTriggerKind.TriggerCharacter, positionCharacter));
-			} else {
-				// According to LSP 3.17 specification: the triggerCharacter in
-				// CompletionContext is undefined if
-				// triggerKind != CompletionTriggerKind.TriggerCharacter
-				param.setContext(new CompletionContext(CompletionTriggerKind.Invoked));
-			}
+			param.setContext(toCompletionContext(positionCharacter, completionTriggerChars));
 		}
 		param.setPosition(start);
 		param.setTextDocument(toTextDocumentIdentifier(fileUri));
 		return param;
+	}
+
+	public static CompletionParams toCompletionParams(URI fileUri, int offset, IDocument document)
+			throws BadLocationException {
+		final var param = new CompletionParams();
+		param.setPosition(toPosition(offset, document));
+		param.setTextDocument(toTextDocumentIdentifier(fileUri));
+		return param;
+	}
+
+	public static CompletionContext toCompletionContext(String positionCharacter,  char[] completionTriggerChars) {
+		if (Chars.contains(completionTriggerChars, positionCharacter.charAt(0))) {
+			return new CompletionContext(CompletionTriggerKind.TriggerCharacter, positionCharacter);
+		} else {
+			// According to LSP 3.17 specification: the triggerCharacter in
+			// CompletionContext is undefined if
+			// triggerKind != CompletionTriggerKind.TriggerCharacter
+			return new CompletionContext(CompletionTriggerKind.Invoked);
+		}
 	}
 
 	public static @Nullable ITextSelection toSelection(Range range, IDocument document) {
