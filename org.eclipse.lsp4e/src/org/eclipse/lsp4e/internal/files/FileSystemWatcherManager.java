@@ -13,6 +13,7 @@
 package org.eclipse.lsp4e.internal.files;
 
 import java.net.URI;
+import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -50,14 +51,16 @@ public final class FileSystemWatcherManager {
 
 	public FileSystemWatcherManager(final @Nullable IProject project) {
 		Path watchedFilesBasePath = null;
+		if (project != null) {
 		try {
-			if (project != null) {
-				final var loc = project.getLocationURI();
-				if (loc != null)
-					watchedFilesBasePath = Paths.get(loc);
+			final var loc = project.getLocationURI();
+			if (loc != null)
+				watchedFilesBasePath = Paths.get(loc);
+			} catch (IllegalArgumentException ex) {
+				LanguageServerPlugin.logError(ex);
+			} catch (FileSystemNotFoundException ex) {
+				LanguageServerPlugin.logWarning("Watched files notification disabled for project " + project.getName() + " because of: " + ex.getMessage()); //$NON-NLS-1$ //$NON-NLS-2$
 			}
-		} catch (IllegalArgumentException ex) {
-			LanguageServerPlugin.logError(ex);
 		}
 		this.basePath = watchedFilesBasePath;
 	}
