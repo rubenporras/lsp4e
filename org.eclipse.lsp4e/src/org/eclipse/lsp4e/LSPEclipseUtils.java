@@ -433,6 +433,20 @@ public final class LSPEclipseUtils {
 	}
 
 	public static @Nullable String getFileName(URI uri) {
+		IResource resource = findResourceFor(uri);
+		if (resource != null) {
+			return resource.getName();
+		}
+
+		try {
+			String name = EFS.getStore(uri).getName();
+			// The root of a file system has an empty name; treat that like an absent file name (handled below).
+			if (!name.isEmpty()) {
+				return name;
+			}
+		} catch (CoreException e) {
+			// Not backed by an Eclipse file system; fall through to NIO handling below.
+		}
 		final java.nio.file.Path path;
 		try {
 			path = java.nio.file.Path.of(uri);
