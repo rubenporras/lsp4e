@@ -9,6 +9,16 @@ updates:
     prefix: ci
     prefix-development: ci
     include: scope
+  # Sub-actions of the same repository have to be bumped together, otherwise
+  # each single-action PR fails because of the version mismatch between e.g.
+  # codeql-action/init and codeql-action/analyze.
+  groups:
+    codeql-action:
+      patterns:
+        - github/codeql-action*
+    actions-cache:
+      patterns:
+        - actions/cache*
 
 # Separated roots are subject to be replaced with the single '/'-root directory as soon as 
 # https://github.com/dependabot/dependabot-core/issues/4364 issue is fixed 
